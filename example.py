@@ -1,31 +1,17 @@
 import tkinter as tk
 
-import sqlite3 as sq
+#import sqlite3 as sq
 
 from uuid import uuid4
 
 from datetime import datetime
 
+from db_requests import *
+
 from tkinter.messagebox import *
 
-with sq.connect("testing.db") as con:
-    cur = con.cursor()
-    cur.execute("""CREATE TABLE IF NOT EXISTS patients(
-        id_pat VARCHAR(100) PRIMARY KEY,
-        full_name VARCHAR(30),
-        age VARCHAR(30)
-        )""")
-    cur.execute("""CREATE TABLE IF NOT EXISTS patients_info(
-        id_in_tab VARCHAR(100) PRIMARY KEY,
-        id_pat VARCHAR(100), 
-        time VARCHAR(30),
-        objective_status VARCHAR(30) DEFAULT NULL,
-        pulse VARCHAR(30) DEFAULT NULL,
-        breathing_rate VARCHAR(30) DEFAULT NULL,
-        pressure VARCHAR(30) DEFAULT NULL,
-        consciousness VARCHAR(30) DEFAULT NULL,
-        concentration VARCHAR(30) DEFAULT NULL
-        )""")
+initial_connect_with_db()
+
 
 class Testing:
     pat_names_list = []
@@ -275,19 +261,19 @@ class Testing:
 #Db_connect-funktions
 
     def submit_data(self):
-        a = self.item1.get()
-        b = self.item2.get()
-        if not a or not b:
+        full_name = self.item1.get()
+        age = self.item2.get()
+        if not full_name or not age:
             showinfo(self.lang.warning, self.lang.warning_field_required)
         else:
-            c = self.item3.get()
-            d = self.item4.get()
-            e = self.item5.get()
-            f = self.item6.get()
-            g = self.item7.get()
-            i = self.item8.get()
+            obj_status = self.item3.get()
+            pulse = self.item4.get()
+            breathing_rate = self.item5.get()
+            blood_preassure = self.item6.get()
+            consciousness = self.item7.get()
+            paO2 = self.item8.get()
             len_list = []
-            for num in [a, b, c, d, f, g, i]:
+            for num in [full_name, age, obj_status, pulse, blood_preassure, consciousness, paO2]:
                 if len(num) > 30:
                     len_list.append(False)
                 else:
@@ -297,27 +283,10 @@ class Testing:
             else:
                 self.destr_menu3()
                 self.test_beggining()
-                k = str(uuid4())
-                m = str(datetime.now())[0:-6]
-                with sq.connect("testing.db") as cons:
-                    curs = cons.cursor()
-                    curs.execute(f"""SELECT id_pat FROM patients WHERE full_name == '{a}' and age == '{b}'""")
-                    j = curs.fetchall()
-                    if j:
-                        curs.execute(f"""INSERT INTO patients_info 
-                                    (id_in_tab, id_pat, time, objective_status, pulse, breathing_rate, 
-                                    pressure, consciousness, concentration) 
-                                    VALUES("{k}", "{j[0][0]}", "{m}", "{c}", "{d}", "{e}", "{f}", "{g}", "{i}")""")
-                    else:
-                        j = str(uuid4())
-                        curs.execute(f"""INSERT INTO patients 
-                            (id_pat, full_name, age)
-                            VALUES("{j}", "{a}", "{b}")""")
-                        curs.execute(f"""INSERT INTO patients_info 
-                            (id_in_tab, id_pat, time, objective_status, pulse, breathing_rate, 
-                            pressure, consciousness, concentration) 
-                            VALUES("{k}", "{j}", "{m}", "{c}", "{d}", "{e}", "{f}", "{g}", "{i}")""")
-                    curs.close()
+                id = str(uuid4())
+                date_of_survey = str(datetime.now())[0:-6]
+                create_patient(full_name, age, obj_status, pulse, breathing_rate, blood_preassure, consciousness, paO2, date_of_survey, id)
+
 
     def select_all(self):
         """Menu to enter patient's name to find information"""
@@ -350,45 +319,40 @@ class Testing:
         """Show patients information in tab"""
         name_from_entry = self.pat_name.get()
         age_from_entry = self.pat_age.get()
-        with sq.connect("testing.db") as cons:
-            curs = cons.cursor()
-            curs.execute(f"""SELECT id_pat FROM patients WHERE full_name == '{name_from_entry}' AND age == '{age_from_entry}'""")
-            id_info = curs.fetchall()
-            if id_info:
-                self.destr_name_print()
-                curs.execute(f"""SELECT * FROM patients_info WHERE id_pat == '{id_info[0][0]}'""")
-                information = curs.fetchall()
-                self.print_question(name_from_entry, 0, 0, 1)
-                self.delete_list.append(self.question)
-                curs.execute(f"""SELECT age FROM patients WHERE full_name == '{name_from_entry}'""")
-                age_pat = curs.fetchall()
-                self.print_question(age_pat[0][0], 0, 1, 1)
-                self.delete_list.append(self.question)
-                list_tab = ["time", "objective_status", "pulse", "breathing_rate",
-                    "pressure", "consciousness", "concentration"]
+        id_info = select_patient_info_from_db(name_from_entry, age_from_entry)
+        if id_info:
+            self.destr_name_print()
+            information = select_patient_by_id(id_info)
+            self.print_question(name_from_entry, 0, 0, 1)
+            self.delete_list.append(self.question)
+            age_pat = select_patient_by_name(name_from_entry)
+            self.print_question(age_pat[0][0], 0, 1, 1)
+            self.delete_list.append(self.question)
+            list_tab = ["time", "objective_status", "pulse", "breathing_rate",
+                "pressure", "consciousness", "concentration"]
 
+            for i in list_tab:
+                ro = 1
                 for i in list_tab:
-                    ro = 1
-                    for i in list_tab:
-                        self.print_question(i, ro, 0, 1)
-                        self.delete_list.append(self.question)
-                        ro += 1
-                col = 1
+                    self.print_question(i, ro, 0, 1)
+                    self.delete_list.append(self.question)
+                    ro += 1
+            col = 1
 
-                for row in information:
-                    ro = 1
-                    for word in row[2::]:
-                        self.print_question(word, ro, col, 1)
-                        self.delete_list.append(self.question)
-                        ro += 1
-                    col += 1
-                self.return_menu = tk.Button(self.win, text=self.lang.pr_menu, font=("Arial", 14), command=self.delete_pat_info_tab)
-                self.return_menu.grid(row=9, column=1, columnspan=1, stick="wens", padx=5, pady=5)
+            for row in information:
+                ro = 1
+                for word in row[2::]:
+                    self.print_question(word, ro, col, 1)
+                    self.delete_list.append(self.question)
+                    ro += 1
+                col += 1
+            self.return_menu = tk.Button(self.win, text=self.lang.pr_menu, font=("Arial", 14), command=self.delete_pat_info_tab)
+            self.return_menu.grid(row=9, column=1, columnspan=1, stick="wens", padx=5, pady=5)
 
-                self.win.grid_columnconfigure(0, minsize=80)
-                self.win.grid_columnconfigure(1, minsize=50)
-            else:
-                showinfo(self.lang.warning, self.lang.no_pat)
+            self.win.grid_columnconfigure(0, minsize=80)
+            self.win.grid_columnconfigure(1, minsize=50)
+        else:
+            showinfo(self.lang.warning, self.lang.no_pat)
 
     def select_patients(self):
         self.destr_db_menu()
@@ -401,22 +365,18 @@ class Testing:
             pass
         self.print_question(self.lang.menu1, 0, 1, 1)
         self.pat_names_list.append(self.question)
-        with sq.connect("testing.db") as con:
-            cur = con.cursor()
-            cur.execute("""SELECT full_name, age FROM patients""")
-            text1 = cur.fetchall()
-            e = 0
-            for i in text1:
-                a = " ".join(i)
-                print(a)
-                self.print_question(a, e, 0, 1)
+        text1 = select_name_age()
+        e = 0
+        for word in text1:
+            name_age = " ".join(word)
+            self.print_question(name_age, e, 0, 1)
 
-                self.pat_names_list.append(self.question)
-                self.deleter = tk.Button(self.win, text=self.lang.delete_text, font=("Arial", 12),
-                                         command=lambda : self.del_pat(self.question))
-                self.pat_names_list.append(self.deleter)
-                self.deleter.grid(row=e, column=1, stick="wens", padx=8, pady=8)
-                e += 1
+            self.pat_names_list.append(self.question)
+            self.deleter = tk.Button(self.win, text=self.lang.delete_text, font=("Arial", 12),
+                                        command=lambda : self.del_pat(self.question))
+            self.pat_names_list.append(self.deleter)
+            self.deleter.grid(row=e, column=1, stick="wens", padx=8, pady=8)
+            e += 1
         self.return_menu = tk.Button(self.win, text=self.lang.pr_menu,
                                          font=("Arial", 14), command=self.return_from_list_pations_names)
         self.return_menu.grid(row=e, column=1, columnspan=1, stick="wens", padx=5, pady=5)
@@ -447,22 +407,13 @@ class Testing:
         self.return_prev_menu.destroy()
         self.view_info.destroy()
 
-    def del_pat(self, a):
-        ind = a['text'].rfind(" ")
-        print(ind)
-        name_text = a['text'][:ind]
-        age_text = a['text'][(ind+1)::]
-        print(name_text)
-        print(age_text)
-        with sq.connect("testing.db") as con:
-            cur = con.cursor()
-            cur.execute(f"""SELECT id_pat FROM patients WHERE full_name=='{name_text}' AND age = '{age_text}'""")
-            key_delete = cur.fetchall()
-            cur.execute(f"""DELETE FROM patients_info WHERE id_pat=='{key_delete[0][0]}'""")
-            cur.execute(f"""DELETE FROM patients WHERE full_name=='{name_text}' AND age = '{age_text}'""")
-            cur.close()
-        self.pat_names_list.remove(a)
-        a.destroy()
+    def del_pat(self, patient):
+        ind = patient['text'].rfind(" ")
+        name_text = patient['text'][:ind]
+        age_text = patient['text'][(ind+1)::]
+        select_and_delete_patient(name_text, age_text)
+        self.pat_names_list.remove(patient)
+        patient.destroy()
         self.deleter.destroy()
 
     def destr_menu1(self):
