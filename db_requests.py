@@ -21,44 +21,48 @@ def initial_connect_with_db():
             concentration VARCHAR(30) DEFAULT NULL
             )""")
 
-def create_patient(full_name, age, obj_status, pulse, breathing_rate, blood_preassure, consciousness, paO2, date_of_survey, id):
+def create_patient(patient):
     with sq.connect("testing.db") as cons:
         curs = cons.cursor()
-        curs.execute(f"""SELECT id_pat FROM patients WHERE full_name == '{full_name}' and age == '{age}'""")
+        curs.execute(f"""SELECT id_pat FROM patients WHERE full_name == '{patient['full_name']}' and age == '{patient['age']}'""")
         j = curs.fetchall()
         if j:
             curs.execute(f"""INSERT INTO patients_info 
                         (id_in_tab, id_pat, time, objective_status, pulse, breathing_rate, 
                         pressure, consciousness, concentration) 
-                        VALUES("{id}", "{j[0][0]}", "{date_of_survey}", "{obj_status}", "{pulse}", "{breathing_rate}", "{blood_preassure}", "{consciousness}", "{paO2}")""")
+                        VALUES("{id}", "{j[0][0]}", "{patient['date_of_survey']}", "{patient['obj_status']}", 
+                               "{patient['pulse']}", "{patient['breathing_rate']}", "{patient['blood_preassure']}", 
+                               "{patient['consciousness']}", "{patient['paO2']}")""")
         else:
             j = str(uuid4())
             curs.execute(f"""INSERT INTO patients 
                 (id_pat, full_name, age)
-                VALUES("{j}", "{full_name}", "{age}")""")
+                VALUES("{j}", "{patient['full_name']}", "{patient['age']}")""")
             curs.execute(f"""INSERT INTO patients_info 
                 (id_in_tab, id_pat, time, objective_status, pulse, breathing_rate, 
                 pressure, consciousness, concentration) 
-                VALUES("{id}", "{j}", "{date_of_survey}", "{obj_status}", "{pulse}", "{breathing_rate}", "{blood_preassure}", "{consciousness}", "{paO2}")""")
+                VALUES("{id}", "{j}", "{patient['date_of_survey']}", "{patient['obj_status']}", "{patient['pulse']}", 
+                       "{patient['breathing_rate']}", "{patient['blood_preassure']}", "{patient['consciousness']}", 
+                       "{patient['paO2']}")""")
         curs.close()
 
-def select_patient_info_from_db(name_from_entry, age_from_entry):
+def select_patient_info_from_db(name, age):
     with sq.connect("testing.db") as cons:
         curs = cons.cursor()
         curs.execute(
-            f"""SELECT id_pat FROM patients WHERE full_name == '{name_from_entry}' AND age == '{age_from_entry}'""")
+            f"""SELECT id_pat FROM patients WHERE full_name == '{name}' AND age == '{age}'""")
         return curs.fetchall()
 
-def select_patient_by_id(id_info):
+def select_patient_by_id(info):
     with sq.connect("testing.db") as cons:
         curs = cons.cursor()
-        curs.execute(f"""SELECT * FROM patients_info WHERE id_pat == '{id_info[0][0]}'""")
+        curs.execute(f"""SELECT * FROM patients_info WHERE id_pat == '{info[0][0]}'""")
         return curs.fetchall()
 
-def select_patient_by_name(name_from_entry):
+def select_patient_by_name(name):
     with sq.connect("testing.db") as cons:
         curs = cons.cursor()
-        curs.execute(f"""SELECT age FROM patients WHERE full_name == '{name_from_entry}'""")
+        curs.execute(f"""SELECT age FROM patients WHERE full_name == '{name}'""")
         return curs.fetchall()
 
 def select_name_age():
@@ -67,11 +71,11 @@ def select_name_age():
         cur.execute("""SELECT full_name, age FROM patients""")
         return cur.fetchall()
 
-def select_and_delete_patient(name_text, age_text):
+def select_and_delete_patient(name, age):
     with sq.connect("testing.db") as con:
         cur = con.cursor()
-        cur.execute(f"""SELECT id_pat FROM patients WHERE full_name=='{name_text}' AND age = '{age_text}'""")
+        cur.execute(f"""SELECT id_pat FROM patients WHERE full_name=='{name}' AND age = '{age}'""")
         key_delete = cur.fetchall()
         cur.execute(f"""DELETE FROM patients_info WHERE id_pat=='{key_delete[0][0]}'""")
-        cur.execute(f"""DELETE FROM patients WHERE full_name=='{name_text}' AND age = '{age_text}'""")
+        cur.execute(f"""DELETE FROM patients WHERE full_name=='{name}' AND age = '{age}'""")
         cur.close()

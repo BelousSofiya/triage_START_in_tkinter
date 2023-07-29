@@ -285,7 +285,19 @@ class Testing:
                 self.test_beggining()
                 id = str(uuid4())
                 date_of_survey = str(datetime.now())[0:-6]
-                create_patient(full_name, age, obj_status, pulse, breathing_rate, blood_preassure, consciousness, paO2, date_of_survey, id)
+                patient = {
+                    'full_name': full_name,
+                    'age': age,
+                    'obj_status': obj_status,
+                    'pulse': pulse,
+                    'breathing_rate': breathing_rate,
+                    'blood_preassure': blood_preassure,
+                    'consciousness': consciousness,
+                    'paO2': paO2,
+                    'date_of_survey': date_of_survey,
+                    'id': id
+                }
+                create_patient(patient)
 
 
     def select_all(self):
